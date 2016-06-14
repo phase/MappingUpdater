@@ -6,8 +6,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.ListIterator;
+import java.util.Set;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -40,23 +44,59 @@ public class MappingUpdater {
     }
 
     public List<String> generateMappings() {
-        List<String> newMappings = new ArrayList<String>();
+        Set<String> newMappings = new HashSet<String>();
 
         JSONObject oldProfile = new JSONObject(this.oldProfile);
         JSONObject newProfile = new JSONObject(this.newProfile);
-        for (String clazz : oldProfile.keySet()) {
+        for (String oldClass : oldProfile.keySet()) {
             try {
-                String oldClassHash = oldProfile.getJSONObject(clazz).getString("hash");
-                String newClassHash = newProfile.getJSONObject(clazz).getString("hash");
-                if (oldClassHash.equals(newClassHash)) {
-                    newMappings.addAll(getMappings(clazz));
+                JSONObject oldClassObject = oldProfile.getJSONObject(oldClass);
+                String oldClassHash = oldClassObject.getString("hash");
+                for (String newClass : newProfile.keySet()) {
+                    JSONObject newClassObject = newProfile.getJSONObject(newClass);
+                    String newClassHash = newClassObject.getString("hash");
+                    if (oldClassHash.equals(newClassHash)) {
+                        List<String> mappings = getMappings(newClass);
+                        for (final ListIterator<String> i = mappings.listIterator(); i.hasNext();) {
+                            final String element = i.next();
+                            i.set(element.replaceFirst(oldClass, newClass));
+                        }
+                        newMappings.addAll(mappings);
+                        break;
+                    }
+                    if (oldClassObject.has("string") && newClassObject.has("string")) {
+                        JSONArray oldClassStrings = oldClassObject.getJSONArray("string");
+                        JSONArray newClassStrings = newClassObject.getJSONArray("string");
+                        int sameStrings = 0;
+                        for (int i = 0; i < oldClassStrings.length(); i++) {
+                            if (newClassStrings.length() > i) {
+                                if (oldClassStrings.getString(i).equals(newClassStrings.getString(i))) {
+                                    sameStrings++;
+                                }
+                            }
+                        }
+                        if (sameStrings >= oldClassStrings.length()) {
+                            List<String> mappings = getMappings(newClass);
+                            for (final ListIterator<String> i = mappings.listIterator(); i.hasNext();) {
+                                final String element = i.next();
+                                i.set(element.replaceFirst(oldClass, newClass));
+                            }
+                            newMappings.addAll(mappings);
+                            break;
+                        }
+                    }
                 }
+
             }
-            catch (JSONException ignored) {}
+            catch (JSONException ignored) {
+                ignored.printStackTrace();
+            }
         }
 
-        Collections.sort(newMappings);
-        return newMappings;
+        List<String> sortedMappings = new ArrayList<String>();
+        sortedMappings.addAll(newMappings);
+        Collections.sort(sortedMappings);
+        return sortedMappings;
     }
 
     public void update(String output) {
