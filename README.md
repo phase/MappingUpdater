@@ -1,5 +1,5 @@
 # Mapping Updater
-This is a tool to create new mappings based off [jar profiles](https://minecraft16.ml/profiles/).
+This is a tool to create new mappings based off [jar profiles](https://minecraft16.ml/minecraft/profiles/).
 
 ## Usage
 ```
